@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Premier League Simulation</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center; /* Center-align text within the body */
+            background-color: #f2f2f2; /* Light gray background */
+            margin: 0; /* Remove default margin */
+            padding: 0; /* Remove default padding */
+            display: flex; /* Use flexbox for layout */
+            justify-content: center; /* Center content horizontally */
+            align-items: center; /* Center content vertically */
+            min-height: 100vh; /* Minimum height to cover viewport */
+        }
+        .container {
+            width: 100%; /* Full width */
+            max-width: 800px; /* Maximum width for content */
+            background-color: rgba(255, 255, 255, 0.75); /* Semi-transparent white background */
+            padding: 20px; /* Padding around content */
+            border-left: 10px solid #ffffff; /* White left border */
+            border-right: 10px solid #ffffff; /* White right border */
+            box-sizing: border-box; /* Include borders in width */
+        }
+        h1 {
+            margin-top: 20px;
+        }
+        /* CSS styles for section boxes */
+        .section-box {
+            display: inline-block; /* For fitting content */
+            padding: 10px; /* Padding for content inside section box */
+            border: 1px solid #1a1a1a;
+            border-radius: 5px; /* Rounded corners */
+            background-color: rgba(255, 255, 255, 0.75); /* Semi-transparent white background */
+            margin: 10px;
+            width: fit-content; /* Ensure width adapts to content */
+            max-width: 380px; /* Maximum width to avoid overly wide boxes */
+            height: fit-content; /* Ensure height adapts to content */
+        }
+        table {
+            width: 100%; /* Full width table */
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 8px;
+            text-align: left; /* Left-align text */
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2; /* Light gray background for header cells */
+        }
+        h2 {
+            text-decoration: underline; /* Underline h2 headings (X Week) */
+        }
+        button {
+            padding: 12px 24px; /* Increased padding for larger buttons */
+            margin: 8px;
+        }
+        /* CSS styles for the team strength form */
+        #strengthForm {
+            display: none; /* Initially hide the team strength form */
+        }
+        .intro-image {
+            max-width: 100%;
+            height: auto; /* Auto height for responsive image */
+            margin-bottom: 20px;
+        }
+    </style>      
+</head>
+<body>
+    <h1>Premier League Simulation</h1>
+
+    <img src="https://upload.wikimedia.org/wikipedia/tr/a/a0/Premierleague.PNG" alt="Premier League" class="intro-image">
+
+    <div id="results">
+        <!-- Results will be displayed here dynamically -->
+    </div>
+    <button id="nextWeekBtn" onclick="nextWeek()">Next Week</button>
+    <button id="allLeagueBtn" onclick="allLeaguePlay()">All-League Play</button>
+    
+    <button id="changeStrengthsBtn" onclick="toggleForm()">Edit Team Strength</button>
+    <!-- Form for changing team strengths -->
+    <div id="strengthForm">
+        <h3>Edit Team Strengths</h3>
+        <form id="updateStrengthsForm">
+            <label for="chelsea">Chelsea:</label>
+            <input type="number" id="chelsea" name="Chelsea" min="1" max="4" required><br><br>
+            
+            <label for="arsenal">Arsenal:</label>
+            <input type="number" id="arsenal" name="Arsenal" min="1" max="4" required><br><br>
+            
+            <label for="manCity">Manchester:</label>
+            <input type="number" id="manCity" name="Manchester City" min="1" max="4" required><br><br>
+            
+            <label for="liverpool">Liverpool:</label>
+            <input type="number" id="liverpool" name="Liverpool" min="1" max="4" required><br><br>
+            
+            <button type="submit">Update</button> <!-- Submit button to update strengths -->
+        </form>  
+    </div>
+
+    <script> // JavaScript functions to handle buttons and form submission
+        let week = 1; // Start at 1st week
+        const maxWeek = 5; // Stop at 5th week
+
+        function nextWeek() { // Function to simulate next week's matches
+            if (week <= maxWeek) { // Fetch data from main.go server endpoint to simulate matches for current week
+                fetch(`/simulate?week=${week}`)
+                    .then(response => response.text())
+                    .then(data => {
+                        document.getElementById('results').innerHTML = data; // Display simulation results
+                        week++; // Increment week counter
+                        if (week > maxWeek) { // Hide when simulation ends
+                            hideButtons(); 
+                            hideStrengthForm();
+                        } else { // Fetch current team strengths and pre-fill form fields
+                            fetch(`/teamStrengths`)
+                                .then(response => {
+                                    if (!response.ok) {
+                                        throw new Error('Network response was not ok');
+                                    }
+                                    return response.json();
+                                })
+                                .then(data => { // Populate form fields with current team strengths
+                                    document.getElementById('chelsea').value = data['Chelsea'];
+                                    document.getElementById('arsenal').value = data['Arsenal'];
+                                    document.getElementById('manCity').value = data['Manchester City'];
+                                    document.getElementById('liverpool').value = data['Liverpool'];
+                                })
+                                .catch(error => {
+                                    console.error('Error fetching team strengths:', error);
+                                });
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error); // Log error to console
+                    });
+            } else {
+                alert('End of simulation'); // Alert user when simulation reaches end
+            }
+        }
+
+        function allLeaguePlay() { // Function to simulate all remaining weeks' matches
+            fetch(`/all?week=${week}`) // Fetch data from server endpoint to simulate weeks
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('results').innerHTML = data; // Display simulation results
+                    week = maxWeek + 1; // Set week beyond max to prevent further simulation
+                    hideButtons(); // Hide when simulation ends
+                    hideStrengthForm();
+                })
+                .catch(error => {
+                    console.error('Error:', error); // Log error to console
+                });
+        }
+
+        function updateStrengths() { // Function to update team strengths via form submission
+            const chelseaStrength = document.getElementById('chelsea').value; // Retrieve values from form fields
+            const arsenalStrength = document.getElementById('arsenal').value;
+            const manCityStrength = document.getElementById('manCity').value;
+            const liverpoolStrength = document.getElementById('liverpool').value;
+
+            const formData = { // Prepare JSON object with updated team strengths
+                "Chelsea": parseInt(chelseaStrength),
+                "Arsenal": parseInt(arsenalStrength),
+                "Manchester City": parseInt(manCityStrength),
+                "Liverpool": parseInt(liverpoolStrength)
+            };
+
+            fetch('/changeStrengths', { // Send POST request to main.go server endpoint to update team strengths
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert("Strengths updated successfully!"); // Notify user on success
+                } else {
+                    alert("Failed to update strengths!"); // Notify user on failure
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error); // Log error to console
+                alert("Failed to update strengths!"); // Notify user on failure
+            });
+        }
+
+        function hideButtons() { // Function to hide buttons based on current week
+            document.getElementById('nextWeekBtn').style.display = 'none'; // Hide 'Next Week' and 'All-League Play' buttons
+            document.getElementById('allLeagueBtn').style.display = 'none';
+            if (week >= 5) { // Hide 'Edit Team Strength' button when week >= 5
+                document.getElementById('changeStrengthsBtn').style.display = 'none';
+            }
+        }
+
+        function hideStrengthForm() { // Function to hide strength form after simulation ends
+            document.getElementById('strengthForm').style.display = 'none';
+        }
+
+        function toggleForm() { // Function to toggle display of strength form based on current week
+            if (week <= 5) {
+                const strengthForm = document.getElementById('strengthForm');
+                if (strengthForm.style.display === 'none') {
+                    strengthForm.style.display = 'block'; // Display form if hidden
+                } else {
+                    strengthForm.style.display = 'none'; // Else, hide form if displayed
+                }
+            } else {
+                alert('Cannot change strengths after Week 4.'); // Alert user if changing strengths after week 4
+            }
+        }
+
+        // Event listener for form submission to update team strengths
+        document.getElementById("updateStrengthsForm").addEventListener("submit", function(event) {
+            event.preventDefault(); // Prevent default form behavior
+
+            const formData = { // Retrieve and parse form data into JSON format
+                "Chelsea": parseInt(document.getElementById("chelsea").value),
+                "Arsenal": parseInt(document.getElementById("arsenal").value),
+                "Manchester City": parseInt(document.getElementById("manCity").value),
+                "Liverpool": parseInt(document.getElementById("liverpool").value)
+            };
+
+            fetch("/changeStrengths", { // Send POST request to main.go server to update team strengths
+                method: "POST",
+                body: JSON.stringify(formData), // Convert form data to JSON string
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+            .then(response => response.json()) // Parse response into JSON
+            .then(data => {
+                if (data.success) {
+                    alert("Strengths updated successfully!"); // Notify user on success
+                } else {
+                    alert("Failed to update strengths!"); // Notify user on failure
+                }
+            })
+            .catch(error => {
+                console.error("Error:", error); // Log error to console
+                alert("Failed to update strengths!"); // Notify user on error
+            });
+        });
+
+        if (week >= 5) { // Initial call to hide the form and buttons based on week number
+            hideButtons(); // Hide buttons if week >= 5
+            hideStrengthForm(); // Hide strength form when week >= 5
+        } else {
+            hideStrengthForm(); // Hide form initially if week < 5
+        }
+    </script>
+</body>
+</html>
